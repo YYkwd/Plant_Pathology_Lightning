@@ -1,5 +1,6 @@
 import os
 os.environ["A_SKIP_CHECK"] = "1"
+os.environ["NO_ALBUMENTATIONS_UPDATE"] = "1"
 import gc
 from time import time
 import lightning.pytorch as pl
@@ -51,7 +52,7 @@ if __name__ == "__main__":
         trainer = pl.Trainer(
             accelerator="gpu" if torch.cuda.is_available() else "cpu",
             devices= hparams.devices,
-            min_epochs=2,
+            min_epochs=70,
             max_epochs=hparams.max_epochs,
             callbacks=[checkpoint_callback, early_stop_callback],
             precision="16-mixed" if hparams.precision == 16 else 32,
@@ -70,40 +71,40 @@ if __name__ == "__main__":
         gc.collect()
         torch.cuda.empty_cache()
 
-    # 在所有fold训练完成后进行测试
-    logger.info("Starting final testing...")
+    # # 在所有fold训练完成后进行测试
+    # logger.info("Starting final testing...")
     
-    # 加载测试数据
-    test_loader = generate_test_dataloader(hparams, test_data, transforms)
+    # # 加载测试数据
+    # test_loader = generate_test_dataloader(hparams, test_data, transforms)
     
-    # 加载最佳模型进行测试
-    best_model_path = checkpoint_callback.best_model_path
-    logger.info(f"Loading best model from: {best_model_path}")
+    # # 加载最佳模型进行测试
+    # best_model_path = checkpoint_callback.best_model_path
+    # logger.info(f"Loading best model from: {best_model_path}")
     
-    # 创建新模型实例并加载权重
-    test_model = MInterface(**vars(hparams))
-    test_model.load_state_dict(torch.load(best_model_path)['state_dict'])
+    # # 创建新模型实例并加载权重
+    # test_model = MInterface(**vars(hparams))
+    # test_model.load_state_dict(torch.load(best_model_path)['state_dict'])
     
-    # 设置模型为评估模式
-    test_model.eval()
+    # # 设置模型为评估模式
+    # test_model.eval()
     
-    # 创建测试trainer
-    test_trainer = pl.Trainer(
-        accelerator="gpu" if torch.cuda.is_available() else "cpu",
-        devices=hparams.devices,
-        logger=False,
-        enable_progress_bar=True
-    )
+    # # 创建测试trainer
+    # test_trainer = pl.Trainer(
+    #     accelerator="gpu" if torch.cuda.is_available() else "cpu",
+    #     devices=hparams.devices,
+    #     logger=False,
+    #     enable_progress_bar=True
+    # )
     
-    # 运行测试
-    test_results = test_trainer.test(test_model, dataloaders=test_loader)
+    # # 运行测试
+    # test_results = test_trainer.test(test_model, dataloaders=test_loader)
     
-    # 记录测试结果
-    logger.info("Test Results:")
-    logger.info(f"Test Loss: {test_results[0]['test_loss']:.4f}")
-    logger.info(f"Test ROC AUC: {test_results[0]['test_roc_auc']:.4f}")
+    # # 记录测试结果
+    # logger.info("Test Results:")
+    # logger.info(f"Test Loss: {test_results[0]['test_loss']:.4f}")
+    # logger.info(f"Test ROC AUC: {test_results[0]['test_roc_auc']:.4f}")
     
-    # 清理
-    del test_model
-    gc.collect()
-    torch.cuda.empty_cache()
+    # # 清理
+    # del test_model
+    # gc.collect()
+    # torch.cuda.empty_cache()

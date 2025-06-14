@@ -28,7 +28,7 @@ class MInterface(pl.LightningModule):
         return self.model(img)
 
     def training_step(self, batch, batch_idx):
-        images, labels, data_load_time, _ = batch  # 忽略 image_id
+        images, labels, data_load_time, image_ids = batch  # 正确解包所有值
         scores = self(images)
         loss = self.loss_function(scores, labels)
         self.training_step_outputs.append(loss.detach())
@@ -41,7 +41,7 @@ class MInterface(pl.LightningModule):
             self.training_step_outputs.clear()
 
     def validation_step(self, batch, batch_idx):
-        images, labels, data_load_time = batch
+        images, labels, data_load_time, image_ids = batch  # 正确解包所有值
         scores = self(images)
         loss = self.loss_function(scores, labels)
         #计算ACC

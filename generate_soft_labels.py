@@ -88,7 +88,7 @@ def generate_soft_labels(hparams, data, transforms, checkpoint_paths):
         # 生成预测（软标签）
         preds = []
         with torch.no_grad():
-            for images, labels, times in tqdm(val_dataloader, desc=f"Fold {fold_idx} Soft Labels"):
+            for images, labels, times, _ in tqdm(val_dataloader, desc=f"Fold {fold_idx} Soft Labels"):
                 try:
                     images = images.to(model.device)
                     outputs = model(images)

@@ -88,7 +88,7 @@ def init_hparams():
     parser.add_argument("--soft_labels_filename", type=str, default="data/plant_pathodolgy_data/soft_labels.csv")
 
     # Add trainer arguments
-    parser.add_argument('--max_epochs', default=5, type=int)
+    parser.add_argument('--max_epochs', default=120, type=int)
     parser.add_argument('--accelerator', default='auto', type=str)
     parser.add_argument('--devices', default='auto', type=str)
     parser.add_argument('--strategy', default='auto', type=str)
