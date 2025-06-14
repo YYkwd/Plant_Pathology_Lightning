@@ -28,7 +28,7 @@ class MInterface(pl.LightningModule):
         return self.model(img)
 
     def training_step(self, batch, batch_idx):
-        images, labels, data_load_time = batch
+        images, labels, data_load_time, _ = batch  # 忽略 image_id
         scores = self(images)
         loss = self.loss_function(scores, labels)
         self.training_step_outputs.append(loss.detach())
