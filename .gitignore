@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyTorch Lightning
+lightning_logs/
+wandb/
+runs/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Environment
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Data
+data/
+*.csv
+*.jpg
+*.jpeg
+*.png
+*.gif
+
+# Logs
+logs/
+*.log
+
+# Model checkpoints
+*.ckpt
+*.pt
+*.pth
+
+# System
+.DS_Store
+Thumbs.db 

@@ -1,0 +1,158 @@
+import os
+import time
+import cv2
+import numpy as np
+import pandas as pd
+import torch
+from torch.utils.data import DataLoader, Dataset
+from albumentations import (
+    Compose, GaussianBlur, HorizontalFlip, MedianBlur, MotionBlur,
+    Normalize, OneOf, RandomBrightnessContrast, Resize, ShiftScaleRotate, VerticalFlip
+)
+from utils import IMAGE_FOLDER, IMG_SHAPE
+
+# Dataset for Plant Pathology Challenge
+class PlantDataset(Dataset):
+    def __init__(self, data, soft_labels_filename=None, transforms=None):
+        self.data = data
+        self.transforms = transforms
+        if soft_labels_filename:
+            self.soft_labels = pd.read_csv(soft_labels_filename)
+        else:
+            self.soft_labels = None
+            print("Soft labels not provided. Using original labels.")
+
+    def __getitem__(self, index):
+        start_time = time.time()
+
+        # Read image
+        image_path = os.path.join(IMAGE_FOLDER, self.data.iloc[index, 0] + ".jpg")
+        image = cv2.imread(image_path)
+        if image is None:
+            raise ValueError(f"Image not found at {image_path}")
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) # H W C
+
+        # Correct image shape if necessary
+        if image.shape != IMG_SHAPE:
+            image = image.transpose(1, 0, 2) #高度和宽度搞反了
+
+        # Apply transformations
+        if self.transforms:
+            image = self.transforms(image=image)["image"]
+        image = np.transpose(image, (2, 0, 1)).astype(np.float32)
+
+        # Prepare labels
+        if self.soft_labels is not None:
+            label = (
+                (self.data.iloc[index, 1:].values.astype(np.float32) * 0.7) +
+                (self.soft_labels.iloc[index, 1:].values.astype(np.float32) * 0.3)
+            )
+        else:
+            label = self.data.iloc[index, 1:].values.astype(np.float32)
+
+        label = torch.tensor(label, dtype=torch.float32)
+
+        data_load_time = time.time() - start_time
+        return image, label, torch.tensor(data_load_time, dtype=torch.float32)
+
+    def __len__(self):
+        return len(self.data)
+
+
+def generate_transforms(image_size):
+    """Generate albumentations transforms for training and validation."""
+    train_transform = Compose([
+        Resize(height=image_size[0], width=image_size[1]),
+        OneOf([
+            RandomBrightnessContrast(brightness_limit=0.1, contrast_limit=0.1, p=1.0),
+        ], p=1.0),
+        OneOf([
+            MotionBlur(blur_limit=3, p=1.0),
+            MedianBlur(blur_limit=3, p=1.0),
+            GaussianBlur(blur_limit=3, p=1.0)
+        ], p=0.5),
+        VerticalFlip(p=0.5),
+        HorizontalFlip(p=0.5),
+        ShiftScaleRotate(
+            shift_limit=0.2, scale_limit=0.2, rotate_limit=20,
+            interpolation=cv2.INTER_LINEAR, border_mode=cv2.BORDER_REFLECT_101, p=1.0
+        ),
+        Normalize(
+            mean=(0.485, 0.456, 0.406),
+            std=(0.229, 0.224, 0.225),
+            max_pixel_value=255.0,
+            p=1.0
+        ),
+    ])
+
+    val_transform = Compose([
+        Resize(height=image_size[0], width=image_size[1]),
+        Normalize(
+            mean=(0.485, 0.456, 0.406),
+            std=(0.229, 0.224, 0.225),
+            max_pixel_value=255.0,
+            p=1.0
+        ),
+    ])
+
+    return {"train_transforms": train_transform, "val_transforms": val_transform}
+
+
+def generate_dataloaders(hparams, train_data, val_data, transforms):
+    """Generate DataLoaders for training and validation."""
+    train_dataset = PlantDataset(
+        data=train_data,
+        transforms=transforms["train_transforms"],
+        soft_labels_filename=hparams.soft_labels_filename
+    )
+    val_dataset = PlantDataset(
+        data=val_data,
+        transforms=transforms["val_transforms"],
+        soft_labels_filename=hparams.soft_labels_filename
+    )
+
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=hparams.train_batch_size,
+        shuffle=True,
+        num_workers=hparams.num_workers,
+        pin_memory=torch.cuda.is_available(),
+        drop_last=True ,
+        persistent_workers=True
+    )
+
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=hparams.val_batch_size,
+        shuffle=False,
+        num_workers=hparams.num_workers,
+        pin_memory=torch.cuda.is_available(),
+        drop_last=False ,
+        persistent_workers=True     #训练过程中保持这些工作进程（workers）在每个 epoch 之间持续存在，而不是每个 epoch 都重新启动它们。
+                                    # 这样可以避免每个 epoch 开始时的开销，并提高数据加载效率
+        
+    )
+
+    return train_loader, val_loader
+
+def generate_test_dataloader(hparams, test_data, transforms):
+    """
+    Generate DataLoader for test data using the same transformation and structure as validation.
+    """
+    test_dataset = PlantDataset(
+        data=test_data,
+        transforms=transforms["val_transforms"],  # 测试阶段不做数据增强
+        soft_labels_filename=None  # 测试集通常没有软标签
+    )
+
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=hparams.val_batch_size,  # 可以使用验证集的 batch size
+        shuffle=False,
+        num_workers=hparams.num_workers,
+        pin_memory=torch.cuda.is_available(),
+        drop_last=False,
+        persistent_workers=True  # 提升效率
+    )
+
+    return test_loader
