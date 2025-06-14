@@ -18,7 +18,7 @@ if __name__ == "__main__":
     #检查超参数 按 key 排序输出
     print_hparams(hparams, mode="table")
 
-
+    
     torch.set_float32_matmul_precision('medium') # ❗
 
     logger = init_logger("kun_out", log_dir=hparams.log_dir)

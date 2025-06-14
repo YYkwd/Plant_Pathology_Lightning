@@ -1,0 +1,31 @@
+=== Basic Dataset Information ===
+Total number of samples: 1821
+Number of unique images: 1821
+
+Columns in the dataset:
+- image_id
+- healthy
+- multiple_diseases
+- rust
+- scab
+
+=== Class Distribution Analysis ===
+
+Class Distribution:
+healthy: 516 samples (28.34%)
+multiple_diseases: 91 samples (5.00%)
+rust: 622 samples (34.16%)
+scab: 592 samples (32.51%)
+
+=== Multilabel Distribution Analysis ===
+
+Top 10 most common label combinations:
+rust: 622 samples (34.16%)
+scab: 592 samples (32.51%)
+healthy: 516 samples (28.34%)
+multiple_diseases: 91 samples (5.00%)
+
+=== Image Label Count Analysis ===
+Average labels per image: 1.00
+Minimum labels per image: 1
+Maximum labels per image: 1
