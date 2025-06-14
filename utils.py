@@ -81,7 +81,7 @@ def init_hparams():
 
     # Other
     parser.add_argument('--aug_prob', default=0.5, type=float)
-    parser.add_argument("--backbone", type=str, default="se_resnext50_32x4d")
+    parser.add_argument("--backbone", type=str, default="seresnext50_32x4d")
     parser.add_argument("--image_size", nargs='+', type=int, default=[256, 256])
     #parser.add_argument("--precision", type=int, default=16)
     #parser.add_argument("--gradient_clip_val", type=float, default=1.0)

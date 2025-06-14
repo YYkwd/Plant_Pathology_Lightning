@@ -22,7 +22,7 @@ class BinaryHead(nn.Module):
 # 通用分类模型（支持自定义backbone、dropout开关、返回特征向量）
 class GeneralBackboneClassifier(nn.Module):
     def __init__(self,
-                 backbone_name='efficientnet_b2',
+                 backbone_name='seresnext50_32x4d',
                  pretrained=False,
                  num_classes=4,
                  dropout_rate=0.0,

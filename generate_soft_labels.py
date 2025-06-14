@@ -9,6 +9,8 @@ from sklearn.model_selection import KFold
 from scipy.special import softmax
 from torch.utils.data import DataLoader
 import logging
+import glob
+import re
 
 # 导入自定义模块
 from dataset import generate_transforms, PlantDataset
@@ -18,6 +20,53 @@ from utils import init_hparams, seed_reproducer, load_data, IMAGE_FOLDER
 # 设置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+def get_best_checkpoints(checkpoints_dir="checkpoints", pattern="fold=*-*.ckpt"):
+    """
+    自动获取每个fold的最佳模型checkpoint
+    
+    Args:
+        checkpoints_dir: checkpoints文件夹路径
+        pattern: 文件名匹配模式
+    
+    Returns:
+        list: 按fold顺序排列的最佳模型路径列表
+    """
+    if not os.path.exists(checkpoints_dir):
+        raise FileNotFoundError(f"Checkpoints directory not found: {checkpoints_dir}")
+    
+    # 获取所有匹配的checkpoint文件
+    all_checkpoints = glob.glob(os.path.join(checkpoints_dir, pattern))
+    if not all_checkpoints:
+        raise FileNotFoundError(f"No checkpoints found matching pattern: {pattern}")
+    
+    # 按fold分组
+    fold_checkpoints = {}
+    for checkpoint in all_checkpoints:
+        # 从文件名中提取fold编号和验证指标
+        match = re.search(r'fold=(\d+)-.*-(\d+\.\d+)-(\d+\.\d+)\.ckpt', os.path.basename(checkpoint))
+        if match:
+            fold = int(match.group(1))
+            val_loss = float(match.group(2))
+            val_acc = float(match.group(3))
+            
+            if fold not in fold_checkpoints:
+                fold_checkpoints[fold] = []
+            fold_checkpoints[fold].append((checkpoint, val_loss, val_acc))
+    
+    # 对每个fold选择最佳模型（验证准确率最高的）
+    best_checkpoints = []
+    for fold in range(5):  # 假设有5个fold
+        if fold not in fold_checkpoints:
+            raise ValueError(f"No checkpoints found for fold {fold}")
+        
+        # 按验证准确率排序
+        fold_checkpoints[fold].sort(key=lambda x: x[2], reverse=True)
+        best_checkpoint = fold_checkpoints[fold][0][0]
+        best_checkpoints.append(best_checkpoint)
+        logger.info(f"Selected best checkpoint for fold {fold}: {best_checkpoint}")
+    
+    return best_checkpoints
 
 def load_model(model, path, device="cuda"):
     """加载模型权重"""
@@ -118,7 +167,7 @@ def generate_soft_labels(hparams, data, transforms, checkpoint_paths):
     mixed_labels_df = data[["image_id"]].merge(pd.concat(soft_labels_dfs), how="left", on="image_id")
     
     # 保存混合标签
-    output_path = os.path.join("data", "plant_pathodolgy_data", "images",  "mixed_labels.csv")
+    output_path = os.path.join("data", "plant_pathodolgy_data", "mixed_labels.csv")
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     mixed_labels_df.to_csv(output_path, index=False)
     logger.info(f"\n✅ Mixed labels (hard + soft) saved to {output_path}")
@@ -152,19 +201,9 @@ def main():
         transforms = generate_transforms(hparams.image_size)
         logger.info("Transforms generated")
         
-        # 训练好的5折模型路径 - 使用checkpoints目录中的最佳模型
-        checkpoint_paths = [
-            "checkpoints/fold=0-74-0.2447-0.9588.ckpt",  # fold 0 最佳模型
-            "checkpoints/fold=1-63-0.1451-0.9704.ckpt",  # fold 1 最佳模型
-            "checkpoints/fold=2-94-0.2018-0.9586.ckpt",  # fold 2 最佳模型
-            "checkpoints/fold=3-73-0.2700-0.9592.ckpt",  # fold 3 最佳模型
-            "checkpoints/fold=4-60-0.1950-0.9851.ckpt",  # fold 4 最佳模型
-        ]
-        
-        # 检查模型文件是否存在
-        for path in checkpoint_paths:
-            if not os.path.exists(path):
-                raise FileNotFoundError(f"Model checkpoint not found: {path}")
+        # 自动获取最佳模型checkpoints
+        checkpoint_paths = get_best_checkpoints()
+        logger.info(f"Found {len(checkpoint_paths)} best model checkpoints")
         
         # 生成软标签
         generate_soft_labels(hparams, data, transforms, checkpoint_paths)
