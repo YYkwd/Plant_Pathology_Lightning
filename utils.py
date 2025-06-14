@@ -123,7 +123,7 @@ def init_hparams():
 def load_data(logger, frac=1.0):
     """Load training and test data."""
     train_csv = "data/plant_pathodolgy_data/train.csv"
-    test_csv = "data/plant_pathodolgy_data/submission.csv"
+    test_csv = "data/plant_pathodolgy_data/test.csv"
 
     data = pd.read_csv(train_csv)
     test_data = pd.read_csv(test_csv)

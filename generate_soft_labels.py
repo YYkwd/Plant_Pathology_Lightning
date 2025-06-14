@@ -125,7 +125,7 @@ def generate_soft_labels(hparams, data, transforms, checkpoint_paths):
     
     # 同时保存纯软标签（可选）
     soft_labels_df = data[["image_id"]].merge(pd.concat(soft_labels_dfs), how="left", on="image_id")
-    soft_output_path = os.path.join("data", "images", "plant_pathodolgy_data", "soft_labels.csv")
+    soft_output_path = os.path.join("data", "plant_pathodolgy_data", "soft_labels.csv")
     soft_labels_df.to_csv(soft_output_path, index=False)
     logger.info(f"✅ Pure soft labels saved to {soft_output_path}")
 

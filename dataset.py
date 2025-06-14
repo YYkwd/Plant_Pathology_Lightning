@@ -25,8 +25,11 @@ class PlantDataset(Dataset):
     def __getitem__(self, index):
         start_time = time.time()
 
+        # Get image_id
+        image_id = self.data.iloc[index, 0]
+
         # Read image
-        image_path = os.path.join(IMAGE_FOLDER, self.data.iloc[index, 0] + ".jpg")
+        image_path = os.path.join(IMAGE_FOLDER, image_id + ".jpg")
         image = cv2.imread(image_path)
         if image is None:
             raise ValueError(f"Image not found at {image_path}")
@@ -51,9 +54,9 @@ class PlantDataset(Dataset):
             label = self.data.iloc[index, 1:].values.astype(np.float32)
 
         label = torch.tensor(label, dtype=torch.float32)
-
         data_load_time = time.time() - start_time
-        return image, label, torch.tensor(data_load_time, dtype=torch.float32)
+
+        return image, label, data_load_time, image_id
 
     def __len__(self):
         return len(self.data)

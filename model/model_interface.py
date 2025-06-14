@@ -6,6 +6,10 @@ from torch.nn import functional as F
 import torch.optim.lr_scheduler as lrs
 import lightning.pytorch as pl
 from model.losses.factory import LossFactory
+import pandas as pd
+import numpy as np
+import os
+from datetime import datetime
 
 class MInterface(pl.LightningModule):
     def __init__(self,  **kargs):
@@ -17,6 +21,8 @@ class MInterface(pl.LightningModule):
         self.training_step_outputs = []
         self.validation_step_outputs = []
         self.test_step_outputs = []  # 添加测试输出存储
+        self.test_predictions = []  # 存储测试预测结果
+        self.test_image_ids = []    # 存储测试图片ID
         
     def forward(self, img):
         return self.model(img)
@@ -70,68 +76,35 @@ class MInterface(pl.LightningModule):
         self.validation_step_outputs.clear()
 
     def test_step(self, batch, batch_idx):
-        images, labels, data_load_time = batch
+        images, _, _, image_ids = batch  # 忽略标签
         scores = self(images)
-        loss = self.loss_function(scores, labels)
         
-        # 计算测试指标
-        label_digit = labels.argmax(dim=1)
-        out_digit = scores.argmax(dim=1)
-        correct_num = (label_digit == out_digit).sum().item()
-        total_num = len(out_digit)
+        # 存储预测结果和图片ID
+        self.test_predictions.append(scores.detach().cpu())
+        self.test_image_ids.extend(image_ids)
         
-        # 记录测试指标
-        self.log('test_loss', loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log('test_acc', correct_num/total_num, on_step=False, on_epoch=True, prog_bar=True)
-        
-        # 存储测试输出
-        output = {
-            "test_loss": loss.detach(),
-            "scores": scores,
-            "labels": labels,
-            "data_load_time": torch.sum(data_load_time),
-            "test_acc": correct_num / total_num,
-            "predictions": out_digit,  # 存储预测结果
-            "true_labels": label_digit  # 存储真实标签
-        }
-        self.test_step_outputs.append(output)
-        return output
-    
+        return None
+
     def on_test_epoch_end(self):
-        if not self.test_step_outputs:
-            return
+        if self.test_predictions:
+            # 将分数转换为概率
+            predictions = torch.cat(self.test_predictions).cpu()
+            probabilities = torch.softmax(predictions, dim=1).numpy()
             
-        # 计算平均测试损失
-        test_loss_mean = torch.stack([o["test_loss"] for o in self.test_step_outputs]).mean()
-        
-        # 收集所有预测和标签
-        scores_all = torch.cat([o["scores"] for o in self.test_step_outputs]).cpu()
-        labels_all = torch.round(torch.cat([o["labels"] for o in self.test_step_outputs]).cpu())
-        
-        # 计算ROC AUC
-        test_roc_auc = roc_auc_score(labels_all, scores_all)
-        
-        # 收集所有预测和真实标签
-        all_predictions = torch.cat([o["predictions"] for o in self.test_step_outputs])
-        all_true_labels = torch.cat([o["true_labels"] for o in self.test_step_outputs])
-        
-        # 计算混淆矩阵
-        from sklearn.metrics import confusion_matrix
-        cm = confusion_matrix(all_true_labels.cpu(), all_predictions.cpu())
-        
-        # 记录测试指标
-        self.log("test_loss", test_loss_mean, prog_bar=True)
-        self.log("test_roc_auc", test_roc_auc, prog_bar=True)
-        
-        # 打印详细测试结果
-        print("\nTest Results:")
-        print(f"Test Loss: {test_loss_mean:.4f}")
-        print(f"Test ROC AUC: {test_roc_auc:.4f}")
-        print("\nConfusion Matrix:")
-        print(cm)
-        
-        # 清理测试输出
-        self.test_step_outputs.clear()
+            # 保存预测结果到CSV
+            submission_df = pd.DataFrame({
+                'image_id': self.test_image_ids,
+                'healthy': probabilities[:, 0],
+                'multiple_diseases': probabilities[:, 1],
+                'rust': probabilities[:, 2],
+                'scab': probabilities[:, 3]
+            })
+            submission_df.to_csv('data/plant_pathodolgy_data/submission.csv', index=False)
+            print("\nSubmission saved to: data/plant_pathodolgy_data/submission.csv")
+            
+            # 清理
+            self.test_predictions.clear()
+            self.test_image_ids.clear()
 
     def configure_optimizers(self):
         if hasattr(self.hparams, 'weight_decay'):
