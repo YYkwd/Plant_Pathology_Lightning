@@ -85,7 +85,7 @@ def init_hparams():
     parser.add_argument("--image_size", nargs='+', type=int, default=[256, 256])
     #parser.add_argument("--precision", type=int, default=16)
     #parser.add_argument("--gradient_clip_val", type=float, default=1.0)
-    parser.add_argument("--soft_labels_filename", type=str, default="")
+    parser.add_argument("--soft_labels_filename", type=str, default="data/plant_pathodolgy_data/soft_labels.csv")
 
     # Add trainer arguments
     parser.add_argument('--max_epochs', default=5, type=int)

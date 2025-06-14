@@ -41,6 +41,12 @@ env/
 venv/
 ENV/
 
+# Data
+data/
+*.jpg
+*.jpeg
+*.png
+*.gif
 
 # Logs
 logs/

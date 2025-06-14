@@ -37,7 +37,7 @@ if __name__ == "__main__":
         #配置模型保存策略（checkpoint）
         checkpoint_callback = ModelCheckpoint(
             monitor="val_roc_auc", #self.log("val_roc_auc", ...) 中使用了 on_epoch=True 实时监控
-            save_top_k=3,
+            save_top_k=1,
             mode="max",
             filename=f"fold={fold_i}" + "-{epoch}-{val_loss:.4f}-{val_roc_auc:.4f}",
             auto_insert_metric_name=False,
