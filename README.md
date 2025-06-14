@@ -1,0 +1,2 @@
+# Plant_Pathology_Lightning
+基于pytorch_lightning的叶片病理分类项目
