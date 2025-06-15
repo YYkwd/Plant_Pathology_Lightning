@@ -84,7 +84,7 @@ class MInterface(pl.LightningModule):
         self.test_image_ids.extend(image_ids)
         
         return None
-
+    
     def on_test_epoch_end(self):
         if self.test_predictions:
             # 将分数转换为概率

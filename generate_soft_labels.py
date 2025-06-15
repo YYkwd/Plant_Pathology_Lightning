@@ -21,7 +21,7 @@ from utils import init_hparams, seed_reproducer, load_data, IMAGE_FOLDER
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def get_best_checkpoints(checkpoints_dir="checkpoints", pattern="fold=*-*.ckpt"):
+def get_best_checkpoints(checkpoints_dir="checkpoints/resnet50_old", pattern="fold=*-*.ckpt"):
     """
     自动获取每个fold的最佳模型checkpoint
     
@@ -102,6 +102,7 @@ def generate_soft_labels(hparams, data, transforms, checkpoint_paths):
     
     folds = KFold(n_splits=5, shuffle=True, random_state=hparams.seed)
     soft_labels_dfs = []
+    mixed_labels_dfs = []
     alpha = 0.7  # 硬标签权重
     beta = 0.3   # 软标签权重
 
@@ -157,14 +158,21 @@ def generate_soft_labels(hparams, data, transforms, checkpoint_paths):
         logger.info(f"Mixed labels shape: {mixed_labels.shape}")
         logger.info(f"Mixed labels sample:\n{mixed_labels[:5]}")  # 显示前5个样本的混合标签
         
+        # 保存当前fold的软标签
+        val_data_soft = val_data.copy()
+        val_data_soft[label_columns] = soft_probs  # 使用纯软标签
+        soft_labels_dfs.append(val_data_soft)
+        
         # 保存当前fold的混合标签
-        val_data_copy = val_data.copy()
-        val_data_copy[label_columns] = mixed_labels  # 使用列名更新标签
-        soft_labels_dfs.append(val_data_copy)
+        val_data_mixed = val_data.copy()
+        val_data_mixed[label_columns] = mixed_labels  # 使用混合标签
+        mixed_labels_dfs.append(val_data_mixed)
+        
         logger.info(f"Completed Fold {fold_idx + 1}")
 
     # 合并所有fold的标签
-    mixed_labels_df = data[["image_id"]].merge(pd.concat(soft_labels_dfs), how="left", on="image_id")
+    mixed_labels_df = data[["image_id"]].merge(pd.concat(mixed_labels_dfs), how="left", on="image_id")
+    soft_labels_df = data[["image_id"]].merge(pd.concat(soft_labels_dfs), how="left", on="image_id")
     
     # 保存混合标签
     output_path = os.path.join("data", "plant_pathodolgy_data", "mixed_labels.csv")
@@ -172,8 +180,7 @@ def generate_soft_labels(hparams, data, transforms, checkpoint_paths):
     mixed_labels_df.to_csv(output_path, index=False)
     logger.info(f"\n✅ Mixed labels (hard + soft) saved to {output_path}")
     
-    # 同时保存纯软标签（可选）
-    soft_labels_df = data[["image_id"]].merge(pd.concat(soft_labels_dfs), how="left", on="image_id")
+    # 保存纯软标签
     soft_output_path = os.path.join("data", "plant_pathodolgy_data", "soft_labels.csv")
     soft_labels_df.to_csv(soft_output_path, index=False)
     logger.info(f"✅ Pure soft labels saved to {soft_output_path}")
