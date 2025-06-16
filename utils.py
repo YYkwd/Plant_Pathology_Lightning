@@ -42,8 +42,6 @@ def init_hparams():
     
     # Basic Training Control
     parser.add_argument('--batch_size', default=8, type=int)
-    parser.add_argument('--train_batch_size', type=int, default=8)  # 可以合并进 batch_size
-    parser.add_argument('--val_batch_size', type=int, default=8)
     parser.add_argument('--num_workers', default=8, type=int)
     parser.add_argument('--seed', default=1234, type=int)
     parser.add_argument('--lr', default=1e-3, type=float)
@@ -62,7 +60,7 @@ def init_hparams():
 
     # Training Info
     parser.add_argument('--dataset', default='standard_data', type=str)
-    parser.add_argument('--data_dir', default='data/ref', type=str)
+    parser.add_argument('--data_dir', default='data/plant_pathodolgy_data', type=str)
     parser.add_argument('--model_name', default='general_backbone_classifier', type=str) #默认 backbone 模型
     parser.add_argument('--loss', default='soft_cross_entropy', type=str)
     parser.add_argument('--weight_decay', default=1e-5, type=float)
@@ -83,8 +81,6 @@ def init_hparams():
     parser.add_argument('--aug_prob', default=0.5, type=float)
     parser.add_argument("--backbone", type=str, default="seresnext50_32x4d")
     parser.add_argument("--image_size", nargs='+', type=int, default=[256, 256])
-    #parser.add_argument("--precision", type=int, default=16)
-    #parser.add_argument("--gradient_clip_val", type=float, default=1.0)
     parser.add_argument("--soft_labels_filename", type=str, default="data/plant_pathodolgy_data/soft_labels.csv")
 
     # Add trainer arguments

@@ -9,6 +9,8 @@ from pytorch_lightning.callbacks import EarlyStopping
 import glob
 import re
 import logging
+import pandas as pd
+from datetime import datetime
 
 # 自定义模块
 from dataset import generate_transforms, generate_test_dataloader
@@ -137,13 +139,21 @@ def main():
     print(f"Submission ensemble shape: {submission_ensemble.shape}")
     print(f"Test data columns: {test_data.columns.tolist()}")
 
+    # 获取当前时间戳
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    # 创建保存目录
+    save_dir = os.path.join("data", "plant_pathodolgy_data", "ensemble_results")
+    os.makedirs(save_dir, exist_ok=True)
+
     # 保存最终提交文件
     output_df = test_data.copy()
     # 确保列名匹配
     class_columns = ['healthy', 'multiple_diseases', 'rust', 'scab']
     output_df[class_columns] = submission_ensemble
-    output_df.to_csv("data/plant_pathodolgy_data/submission_ensemble.csv", index=False)
-    logger.info("Saved ensemble prediction to submission_ensemble.csv.")
+    output_path = os.path.join(save_dir, f'ensemble_preds_{timestamp}.csv')
+    output_df.to_csv(output_path, index=False)
+    logger.info(f"Saved ensemble prediction to {output_path}")
 
 if __name__ == "__main__":
     main() 

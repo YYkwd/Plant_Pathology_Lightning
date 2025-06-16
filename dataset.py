@@ -102,7 +102,20 @@ def generate_transforms(image_size):
 
 
 def generate_dataloaders(hparams, train_data, val_data, transforms):
-    """Generate DataLoaders for training and validation."""
+    """
+    生成训练和验证数据加载器
+    
+    Args:
+        hparams: 超参数
+        train_data: 训练数据集
+        val_data: 验证数据集
+        transforms: 数据增强转换
+    
+    Returns:
+        train_loader: 训练数据加载器
+        val_loader: 验证数据加载器
+    """
+    # 创建训练和验证数据集
     train_dataset = PlantDataset(
         data=train_data,
         transforms=transforms["train_transforms"],
@@ -114,48 +127,58 @@ def generate_dataloaders(hparams, train_data, val_data, transforms):
         soft_labels_filename=hparams.soft_labels_filename
     )
 
+    # 训练数据加载器
     train_loader = DataLoader(
         train_dataset,
-        batch_size=hparams.train_batch_size,
+        batch_size=hparams.batch_size,  # 使用统一的batch_size
         shuffle=True,
         num_workers=hparams.num_workers,
         pin_memory=torch.cuda.is_available(),
-        drop_last=True ,
+        drop_last=True,
         persistent_workers=True
     )
-
+    
+    # 验证数据加载器
     val_loader = DataLoader(
         val_dataset,
-        batch_size=hparams.val_batch_size,
-        shuffle=False,
-        num_workers=hparams.num_workers,
-        pin_memory=torch.cuda.is_available(),
-        drop_last=False ,
-        persistent_workers=True     #训练过程中保持这些工作进程（workers）在每个 epoch 之间持续存在，而不是每个 epoch 都重新启动它们。
-                                    # 这样可以避免每个 epoch 开始时的开销，并提高数据加载效率
-        
-    )
-
-    return train_loader, val_loader
-
-def generate_test_dataloader(hparams, test_data, transforms):
-    """
-    Generate DataLoader for test data using the same transformation and structure as validation.
-    """
-    test_dataset = PlantDataset(
-        data=test_data,
-        transforms=transforms["val_transforms"],  # 测试阶段不做数据增强
-        soft_labels_filename=None  # 测试集通常没有软标签
-    )
-
-    test_loader = DataLoader(
-        test_dataset,
-        batch_size=hparams.val_batch_size,  # 可以使用验证集的 batch size
+        batch_size=hparams.batch_size,  # 使用统一的batch_size
         shuffle=False,
         num_workers=hparams.num_workers,
         pin_memory=torch.cuda.is_available(),
         drop_last=False,
-        persistent_workers=True  # 提升效率
+        persistent_workers=True
     )
+    
+    return train_loader, val_loader
 
+def generate_test_dataloader(hparams, test_data, transforms):
+    """
+    生成测试数据加载器
+    
+    Args:
+        hparams: 超参数
+        test_data: 测试数据集
+        transforms: 数据增强转换
+    
+    Returns:
+        test_loader: 测试数据加载器
+    """
+    # 创建测试数据集
+    test_dataset = PlantDataset(
+        data=test_data,
+        transforms=transforms["val_transforms"],  # 使用验证集的转换
+        soft_labels_filename=None  # 测试集通常没有软标签
+    )
+    
+    # 测试数据加载器
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=hparams.batch_size,  # 使用统一的batch_size
+        shuffle=False,
+        num_workers=hparams.num_workers,
+        pin_memory=torch.cuda.is_available(),
+        drop_last=False,
+        persistent_workers=True
+    )
+    
     return test_loader

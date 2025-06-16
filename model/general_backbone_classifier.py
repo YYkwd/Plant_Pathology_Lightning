@@ -60,13 +60,13 @@ class GeneralBackboneClassifier(nn.Module):
 
         # 分类头
         self.binary_head = BinaryHead(num_classes=num_classes,
-                                      emb_size=self.out_channels,
-                                      scale=scale)
+                                    emb_size=self.out_channels,
+                                    scale=scale)
 
         # 是否返回embedding
         self.return_embedding = return_embedding
 
-    def forward(self, x):
+    def forward(self, x, targets=None):
         # 1. 特征提取
         features = self.backbone(x)[-1]
 
@@ -84,9 +84,11 @@ class GeneralBackboneClassifier(nn.Module):
         # 5. 分类
         logits = self.binary_head(x)
 
-        if self.return_embedding:
-            # 同时返回logits和embedding特征
-            return logits, x
-        else:
-            # 只返回logits
+        if targets is not None:
+            if self.return_embedding:
+                return logits, x
             return logits
+
+        if self.return_embedding:
+            return logits, x
+        return logits

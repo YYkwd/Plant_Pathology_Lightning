@@ -148,24 +148,12 @@ class MInterface(pl.LightningModule):
         try:
             Model = getattr(importlib.import_module(
                 '.'+name, package=__package__), camel_name)
+            #from model.general_backbone_classifier import GeneralBackboneClassifier as Model
         except:
             raise ValueError(
                 f'Invalid Module File Name or Invalid Class Name {name}.{camel_name}!')
         self.model = self.instancialize(Model)
 
-    # def instancialize(self, Model, **other_args):
-    #     """ Instancialize a model using the corresponding parameters
-    #         from self.hparams dictionary. You can also input any args
-    #         to overwrite the corresponding value in self.hparams.
-    #     """
-    #     class_args = inspect.getfullargspec(Model.__init__).args[1:]
-    #     inkeys = self.hparams.keys()
-    #     args1 = {}
-    #     for arg in class_args:
-    #         if arg in inkeys:
-    #             args1[arg] = getattr(self.hparams, arg)
-    #     args1.update(other_args)
-    #     return Model(**args1)
     def instancialize(self, Model, **other_args):
         """
         实例化模型：根据模型类 Model 的 __init__ 构造函数中的参数，
@@ -178,22 +166,22 @@ class MInterface(pl.LightningModule):
         返回：
         - Model 实例对象（即已经初始化好的模型）
         """
-
         # 1️⃣ 获取模型类构造函数的参数名（除了 self）
         class_args = inspect.getfullargspec(Model.__init__).args[1:]
-        # 示例：['backbone_name', 'pretrained', 'num_classes', 'dropout_rate', ...]
-
-        # 2️⃣ 获取 hparams 中有哪些 key（可理解为超参数的字段名）
-        inkeys = self.hparams.keys()
-
+        
+        # 2️⃣ 获取 hparams 中的所有参数
+        hparams_dict = vars(self.hparams)
+        
         # 3️⃣ 遍历所有构造参数，如果在 hparams 中有对应的字段，就提取其值
         args1 = {}
         for arg in class_args:
-            if arg in inkeys:
-                args1[arg] = getattr(self.hparams, arg)  # hparams[arg]
-
+            if arg in hparams_dict:
+                args1[arg] = hparams_dict[arg]
+            elif hasattr(self.hparams, arg):
+                args1[arg] = getattr(self.hparams, arg)
+        
         # 4️⃣ 如果调用 instancialize 时手动传入了一些额外参数，则用这些参数覆盖掉 hparams 中的对应项
         args1.update(other_args)
-
+        
         # 5️⃣ 将整理好的参数传入模型类，完成实例化
         return Model(**args1)
