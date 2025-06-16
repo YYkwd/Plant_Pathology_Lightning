@@ -10,6 +10,7 @@ import pandas as pd
 import numpy as np
 import os
 from datetime import datetime
+from sklearn.metrics import f1_score
 
 class MInterface(pl.LightningModule):
     def __init__(self,  **kargs):
@@ -42,37 +43,73 @@ class MInterface(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         images, labels, data_load_time, image_ids = batch  # 正确解包所有值
-        scores = self(images)
-        loss = self.loss_function(scores, labels)
-        #计算ACC
-        label_digit = labels.argmax(dim=1)
-        out_digit = scores.argmax(dim=1)
-
-        correct_num = (label_digit == out_digit).sum().item()
-        total_num = len(out_digit) #就是当前 batch 的样本总数
-
+        outputs = self(images)
+        loss = self.loss_function(outputs, labels)
+        
+        # 使用softmax将logits转换为概率分布
+        # 对于单标签分类，所有类别的概率和为1
+        probs = torch.softmax(outputs, dim=1)
+        
+        # 获取预测的类别（概率最大的类别）
+        preds = torch.argmax(probs, dim=1)
+        labels = torch.argmax(labels, dim=1)  # 将one-hot标签转换为类别索引
+        
+        # 计算F1分数
+        f1 = f1_score(labels.cpu().numpy(), preds.cpu().numpy(), average='weighted')
+        
+        # 计算准确率
+        correct = (preds == labels).sum().item()
+        total = labels.size(0)
+        acc = correct / total
+        
+        # 记录验证指标
         self.log('val_loss', loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log('val_acc', correct_num/total_num,
-                 on_step=False, on_epoch=True, prog_bar=True)
+        self.log('val_f1', f1, on_step=False, on_epoch=True, prog_bar=True)
+        self.log('val_acc', acc, on_step=False, on_epoch=True, prog_bar=True)
+        
+        # 保存当前步骤的输出
         output = {
-            "val_loss": loss.detach(),
-            "scores": scores,
-            "labels": labels,
-            "data_load_time": torch.sum(data_load_time),
-            "val_acc" : correct_num / total_num ,
+            'val_loss': loss,
+            'val_f1': f1,
+            'val_acc': acc,
+            'scores': outputs,  # 保存原始logits用于计算ROC AUC
+            'labels': labels,
+            'data_load_time': torch.sum(data_load_time)
         }
         self.validation_step_outputs.append(output)
         
         return output
     
     def on_validation_epoch_end(self):
-        val_loss_mean = torch.stack([o["val_loss"] for o in self.validation_step_outputs]).mean()
-        scores_all = torch.cat([o["scores"] for o in self.validation_step_outputs]).cpu()
-        labels_all = torch.round(torch.cat([o["labels"] for o in self.validation_step_outputs]).cpu())
-        val_roc_auc = roc_auc_score(labels_all, scores_all)
-
-        #self.log("val_loss", val_loss_mean, prog_bar=True)
-        self.log("val_roc_auc", val_roc_auc, prog_bar=True)
+        # 收集所有验证步骤的输出
+        outputs = self.validation_step_outputs
+        
+        # 计算平均验证损失
+        avg_val_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
+        
+        # 计算平均F1分数
+        avg_val_f1 = np.mean([x['val_f1'] for x in outputs])
+        
+        # 计算平均准确率
+        avg_val_acc = np.mean([x['val_acc'] for x in outputs])
+        
+        # 计算ROC AUC分数
+        scores_all = torch.cat([x['scores'] for x in outputs]).cpu()
+        labels_all = torch.cat([x['labels'] for x in outputs]).cpu()
+        
+        # 对scores应用softmax转换为概率
+        probs_all = torch.softmax(scores_all, dim=1)
+        
+        # 计算ROC AUC
+        val_roc_auc = roc_auc_score(labels_all, probs_all, multi_class='ovr')
+        
+        # 记录所有验证指标
+        self.log('val_loss', avg_val_loss, prog_bar=True)
+        self.log('val_f1', avg_val_f1, prog_bar=True)
+        self.log('val_acc', avg_val_acc, prog_bar=True)
+        self.log('val_roc_auc', val_roc_auc, prog_bar=True)
+        
+        # 清空验证步骤输出列表
         self.validation_step_outputs.clear()
 
     def test_step(self, batch, batch_idx):

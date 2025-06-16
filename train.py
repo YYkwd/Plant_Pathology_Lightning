@@ -44,7 +44,7 @@ if __name__ == "__main__":
             auto_insert_metric_name=False,
         )
         #配置早停策略（early stopping）
-        early_stop_callback = EarlyStopping(monitor="val_roc_auc", patience=10, mode="max")
+        early_stop_callback = EarlyStopping(monitor="val_f1", patience=10, mode="max")
 
         model = MInterface(**vars(hparams))
         print(type(model))
@@ -52,7 +52,7 @@ if __name__ == "__main__":
         trainer = pl.Trainer(
             accelerator="gpu" if torch.cuda.is_available() else "cpu",
             devices= hparams.devices,
-            min_epochs=70,
+            min_epochs=100,
             max_epochs=hparams.max_epochs,
             callbacks=[checkpoint_callback, early_stop_callback],
             precision="16-mixed" if hparams.precision == 16 else 32,

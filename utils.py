@@ -43,7 +43,7 @@ def init_hparams():
     # Basic Training Control
     parser.add_argument('--batch_size', default=8, type=int)
     parser.add_argument('--num_workers', default=8, type=int)
-    parser.add_argument('--seed', default=1234, type=int)
+    parser.add_argument('--seed', default=2020, type=int)
     parser.add_argument('--lr', default=1e-3, type=float)
 
     # LR Scheduler 学习率调度器
@@ -84,7 +84,7 @@ def init_hparams():
     parser.add_argument("--soft_labels_filename", type=str, default="data/plant_pathodolgy_data/soft_labels.csv")
 
     # Add trainer arguments
-    parser.add_argument('--max_epochs', default=120, type=int)
+    parser.add_argument('--max_epochs', default=200, type=int)
     parser.add_argument('--accelerator', default='auto', type=str)
     parser.add_argument('--devices', default='auto', type=str)
     parser.add_argument('--strategy', default='auto', type=str)
