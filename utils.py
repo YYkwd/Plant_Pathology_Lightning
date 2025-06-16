@@ -45,6 +45,7 @@ def init_hparams():
     parser.add_argument('--num_workers', default=8, type=int)
     parser.add_argument('--seed', default=2020, type=int)
     parser.add_argument('--lr', default=1e-3, type=float)
+    parser.add_argument('--weight_decay', default=1e-5, type=float, help='L2 regularization coefficient')
 
     # LR Scheduler 学习率调度器
     parser.add_argument('--lr_scheduler', choices=['step', 'cosine'], type=str , default='cosine')
@@ -63,7 +64,6 @@ def init_hparams():
     parser.add_argument('--data_dir', default='data/plant_pathodolgy_data', type=str)
     parser.add_argument('--model_name', default='general_backbone_classifier', type=str) #默认 backbone 模型
     parser.add_argument('--loss', default='soft_cross_entropy', type=str)
-    parser.add_argument('--weight_decay', default=1e-5, type=float)
     parser.add_argument('--no_augment', action='store_true')
     parser.add_argument('--log_dir', default='lightning_logs', type=str)
     

@@ -144,34 +144,39 @@ class MInterface(pl.LightningModule):
             self.test_image_ids.clear()
 
     def configure_optimizers(self):
-        if hasattr(self.hparams, 'weight_decay'):
-            weight_decay = self.hparams.weight_decay
-        else:
-            weight_decay = 0
+        # 配置Adam优化器
         optimizer = torch.optim.Adam(
-            self.parameters(), lr=self.hparams.lr, weight_decay=weight_decay)
+            self.parameters(),
+            lr=self.hparams.lr,  # 使用hparams中的lr参数
+            betas=(0.9, 0.999),
+            eps=1e-08,
+            weight_decay=self.hparams.weight_decay  # 使用hparams中的weight_decay参数
+        )
 
-        if self.hparams.lr_scheduler is None:
-            return optimizer
+        # 根据hparams中的lr_scheduler参数选择调度器
+        if self.hparams.lr_scheduler == 'step':
+            scheduler = torch.optim.lr_scheduler.StepLR(
+                optimizer,
+                step_size=self.hparams.lr_decay_steps,
+                gamma=self.hparams.lr_decay_rate
+            )
+        elif self.hparams.lr_scheduler == 'cosine':
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+                optimizer,
+                T_max=self.hparams.lr_decay_steps,
+                eta_min=self.hparams.lr_decay_min_lr
+            )
         else:
-            if self.hparams.lr_scheduler == 'step':
-                scheduler = lrs.StepLR(optimizer,
-                                     step_size=self.hparams.lr_decay_steps,
-                                     gamma=self.hparams.lr_decay_rate)
-            elif self.hparams.lr_scheduler == 'cosine':
-                scheduler = lrs.CosineAnnealingLR(optimizer,
-                                                 T_max=self.hparams.lr_decay_steps,
-                                                 eta_min=self.hparams.lr_decay_min_lr)
-            else:
-                raise ValueError('Invalid lr_scheduler type!')
-            return {
-                "optimizer": optimizer,
-                "lr_scheduler": {
-                    "scheduler": scheduler,
-                    "monitor": "val_loss",
-                    "interval": "epoch"
-                }
+            raise ValueError(f'Invalid lr_scheduler type: {self.hparams.lr_scheduler}')
+
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": {
+                "scheduler": scheduler,
+                "interval": "epoch",  # 每个epoch更新学习率
+                "frequency": 1
             }
+        }
 
     def configure_loss(self):
         loss = self.hparams.loss.lower()
